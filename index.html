@@ -7,9 +7,43 @@
     <script src="https://cdn.mxpnl.com/libs/mixpanel-platform/build/mixpanel-platform.v0.latest.min.js"></script>
   </head>
   <body class="mixpanel-platform-body">
-    <h1>Hello, World!</h1>
+  	<div class="mixpanel-platform-section">
+      <div id="dateSelect" style="float: left;"></div>
+      <div id="minSelect" style="float: right;"></div>
+      <div style="clear: both;"></div>
+    </div>
+    <div id="table"></div>
     <script>
-      // Run queries and display results here
+      var script = "String.prototype.count = function(lit, cis) { var m = this.toString().match(new RegExp(lit, ((cis) ? 'gi' : 'g'))); return (m !== null) ? m.length : 0; }; function main() { return Events({ from_date: params.from, to_date: params.to }).groupByUser(function(state, events) { state = state || { event_list: '' }; for (var i = 0; i < events.length; i++) { state.event_list += events[i].name + ', '; } return state; }).groupBy([function(item) { return item.value.event_list; }], mixpanel.reducer.count()).map(function(item) { return { 'count': item.value, 'event list': item.key[0], 'num events': item.key[0].count(',') } }) }";
+      var dateSelect  = $('#dateSelect').MPDatepicker();
+      var eventTable  = $('#table').MPTable({showPercentages: false, firstColHeader: 'Frequency Rank'});
+      var options = {items: [{label: '1', value: 1},{label: '2', value: 2},{label: '3', value: 3},{label: '4', value: 4},{label: '5', value: 5},{label: '6', value: 6},{label: '7', value: 7},{label: '8', value: 8},{label: '9', value: 9},{label: '10', value: 10},]};
+      var dropdown = $('#minSelect').MPSelect(options);
+      function runQuery(minEvents) {
+        var dateRange = {'from': dateSelect.MPDatepicker('value').from.toISOString().slice(0,-14), 'to': dateSelect.MPDatepicker('value').to.toISOString().slice(0,-14)};
+        MP.api.custom_query(script, dateRange).done(function(results) {
+          var obj = {};
+          for (var i = 0; i < results.length; i++) {
+          	if (results[i]['num events'] >= minEvents) {
+          		obj[results[i]['event list']] = results[i]['count'];
+          	}
+          }
+          var res = [];
+          for (key in obj) {
+            res.push([key, obj[key]])
+          }
+          res.sort(function(a,b){return a[1] - b[1]});
+          res.reverse();
+          var res2 = [];
+          for (i = 0; i < res.length; i++) {
+            res2.push({'Count': res[i][1], 'Event sequence': res[i][0].slice(0,-2)});
+          }
+          eventTable.MPTable('setData', res2);
+        });
+      }
+      runQuery(dropdown.MPSelect('value'));
+      dropdown.on('change', function (e, selection) { runQuery(selection) });
+      dateSelect.on('change', function () {runQuery(dropdown.MPSelect('value'))});
     </script>
   </body>
 </html>
